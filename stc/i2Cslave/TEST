@@ -1,0 +1,60 @@
+#include "stc8g.h"
+
+void delay(unsigned int ms);
+void I2Cisr(void) __interrupt(24);
+void sendByte(char byte);
+
+char status = 0;
+
+void main(void)
+{
+	//IAP_CONTR = 0b10100000;//reset, use it if sth goes wrong...
+	
+    P1M0 = 0xff; P1M1 = 0x30; 
+	P12 = 1;
+	P10 = 1;
+	
+	delay(5000);
+	
+	//////I2C
+	P14 = 1;
+	P15 = 1;
+	
+	P_SW2 = 0b10000000;
+	
+	I2CCFG = 0b11011100;//启用i2c，主机模式，设置速度
+	
+	I2CMSST = 0;//清除状态
+	
+	EA = 1;//开启总中断
+	I2CMSCR = 0b10000000;//开启中断,无命令
+	
+	I2CMSAUX = 0b00000000;//关闭自动发送
+	
+	status = 1;
+	I2CMSCR = 0b10000001;//start
+
+	while(1){}//卡死
+}
+
+void delay(unsigned int ms)
+{
+	__data static unsigned char j;
+	__data static unsigned int i;
+
+	i = 15 * ms;
+	j = 90;
+	do
+	{
+		while (--j);
+	} while (--i);
+}
+
+void I2Cisr(void) __interrupt(24)
+{
+	I2CMSST &= 0b10111111;//清除中断位
+	
+	I2CTXD = 0b11001100;//装载数据
+	I2CMSCR = 0b10001010;//发送数据命令+接收 ACK 命令。
+	P10 = !P10;
+}
